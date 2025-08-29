@@ -75,3 +75,6 @@ python app.py
    - 可能是网络问题，请检查您的网络连接
    - 可能是OpenAI API暂时不可用，请稍后再试
    - 如果问题持续存在，请检查API配置和密钥
+  
+## License
+[Apache License 2.0](LICENSE)
