@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件翻译助手 - 多语言文档翻译工具</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind自定义主题 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6', // 蓝色 - 主色调
+                        secondary: '#10b981', // 绿色 - 辅助色
+                        accent: '#8b5cf6', // 紫色 - 强调色
+                        neutral: '#1f2937', // 深色
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                },
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .file-drop-shadow {
+                box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+            }
+            .gradient-bg {
+                background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            }
+            .input-focus {
+                @apply focus:ring-2 focus:ring-primary/50 focus:border-primary focus:outline-none;
+            }
+        }
+    </style>
+    
+    <style>
+        /* 自定义样式 */
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .file-drop-active {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+        
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-neutral min-h-screen">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl md:text-2xl font-bold text-primary flex items-center gap-2">
+                <i class="fa fa-language text-accent"></i>
+                <span>文件翻译助手</span>
+            </h1>
+            <div class="flex items-center gap-4">
+                <a href="#" class="text-gray-600 hover:text-primary transition-colors duration-200">
+                    <i class="fa fa-question-circle"></i>
+                    <span class="hidden md:inline ml-1">帮助</span>
+                </a>
+                <a href="/settings" class="text-gray-600 hover:text-primary transition-colors duration-200">
+                    <i class="fa fa-cog"></i>
+                    <span class="hidden md:inline ml-1">设置</span>
+                </a>
+                <!-- 用户信息和登出按钮 -->
+                <div class="flex items-center gap-4">
+                    <div class="text-gray-600 hidden md:block">
+                        <i class="fa fa-user-circle text-primary"></i>
+                        <span id="currentUser">已登录用户</span>
+                    </div>
+                    <a href="/logout" class="text-gray-600 hover:text-red-500 transition-colors duration-200">
+                        <i class="fa fa-sign-out"></i>
+                        <span class="hidden md:inline ml-1">退出登录</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区域 -->
+    <main class="container mx-auto px-4 py-8 flex-grow">
+        <!-- 介绍区域 -->
+        <section class="text-center mb-10">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold mb-4 text-neutral">多格式文件翻译工具</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto mb-8">快速翻译各种文档格式，保留原文件排版，支持中文、英文、日文、泰文之间的互译。</p>
+            <div class="flex flex-wrap justify-center gap-2 mb-4">
+                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Word文档</span>
+                <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Excel表格</span>
+                <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">PowerPoint演示文稿</span>
+                <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">多语言支持</span>
+            </div>
+        </section>
+
+        <!-- 翻译表单区域 -->
+        <section class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+            <form id="translation-form" enctype="multipart/form-data">
+                <!-- 语言选择区域 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label for="source_lang" class="block text-sm font-medium text-gray-700 mb-1">源语言</label>
+                        <div class="relative">
+                            <select id="source_lang" name="source_lang" class="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg input-focus">
+                                {% for lang in languages %}
+                                <option value="{{ lang.code }}">{{ lang.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa fa-globe text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <label for="target_lang" class="block text-sm font-medium text-gray-700 mb-1">目标语言</label>
+                        <div class="relative">
+                            <select id="target_lang" name="target_lang" class="block w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg input-focus">
+                                {% for lang in languages %}
+                                <option value="{{ lang.code }}">{{ lang.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa fa-language text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文件上传区域 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">上传文件</label>
+                    <div id="file-drop-area" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer file-drop-shadow transition-all duration-200">
+                        <input type="file" id="file-input" name="file" class="hidden" accept=".doc,.docx,.xls,.xlsx,.ppt,.pptx">
+                        <div class="space-y-4">
+                            <div class="text-primary text-4xl mb-2">
+                                <i class="fa fa-cloud-upload"></i>
+                            </div>
+                            <p class="text-gray-600">拖放文件到此处，或 <span class="text-primary font-medium">点击选择文件</span></p>
+                            <p class="text-xs text-gray-500">支持格式：DOC, DOCX, XLS, XLSX, PPT, PPTX（最大16MB）</p>
+                        </div>
+                    </div>
+                    <!-- 已选择文件显示 -->
+                    <div id="selected-file" class="mt-3 hidden items-center p-3 bg-gray-50 rounded-lg">
+                        <i class="fa fa-file-text-o text-primary mr-2"></i>
+                        <span id="file-name" class="text-sm text-gray-700 truncate flex-grow"></span>
+                        <button type="button" id="remove-file" class="text-gray-400 hover:text-red-500 transition-colors duration-200">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 提示信息 -->
+                <div class="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-4">
+                    <p class="text-sm text-blue-700 flex items-start gap-2">
+                        <i class="fa fa-info-circle mt-0.5"></i>
+                        <span>翻译将分为两步进行：首先进行初步翻译，然后对结果进行纠错和完善。您可以在<a href="/settings" class="text-primary font-medium underline hover:no-underline">设置</a>中自定义翻译提示词。</span>
+                    </p>
+                </div>
+
+                <!-- 翻译按钮 -->
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button type="submit" id="translate-btn" class="flex-grow bg-primary hover:bg-primary/90 text-white py-3 px-6 rounded-lg shadow-md transition-all duration-200 flex items-center justify-center gap-2">
+                        <i class="fa fa-language"></i>
+                        <span>开始翻译</span>
+                    </button>
+                    <button type="button" id="api-config-btn" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-6 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2">
+                        <i class="fa fa-cog"></i>
+                        <span>API配置</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 翻译状态和结果区域 -->
+        <section id="translation-result" class="max-w-4xl mx-auto mt-8 hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <!-- 状态指示器 -->
+                <div id="status-processing" class="flex items-center gap-3 mb-4">
+                    <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+                    <p class="text-gray-700">正在翻译文件，请稍候...</p>
+                </div>
+                
+                <div id="status-success" class="hidden flex items-center gap-3 mb-4">
+                    <div class="h-6 w-6 rounded-full bg-green-100 text-green-500 flex items-center justify-center">
+                        <i class="fa fa-check"></i>
+                    </div>
+                    <p class="text-gray-700">翻译完成！</p>
+                </div>
+                
+                <div id="status-error" class="hidden">
+                    <div class="p-4 bg-red-50 border border-red-100 rounded-lg">
+                        <div class="flex items-start gap-3">
+                            <div class="h-6 w-6 rounded-full bg-red-100 text-red-500 flex items-center justify-center mt-0.5">
+                                <i class="fa fa-exclamation"></i>
+                            </div>
+                            <p id="error-message" class="text-red-700 text-sm"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 下载按钮 -->
+                <div id="download-section" class="hidden pt-4 border-t border-gray-100">
+                    <a id="download-link" href="" class="inline-flex items-center gap-2 bg-secondary hover:bg-secondary/90 text-white py-2 px-4 rounded-lg shadow-md transition-all duration-200">
+                        <i class="fa fa-download"></i>
+                        <span>下载翻译文件</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 支持的语言和格式介绍 -->
+        <section class="mt-16 max-w-4xl mx-auto">
+            <h3 class="text-xl font-bold mb-6 text-center">支持的语言和格式</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 支持的语言 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h4 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-language text-primary"></i>
+                        支持的语言
+                    </h4>
+                    <ul class="space-y-2">
+                        {% for lang in languages %}
+                        <li class="flex items-center gap-2 text-gray-700">
+                            <i class="fa fa-check-circle text-green-500"></i>
+                            <span>{{ lang.name }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <!-- 支持的文件格式 -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h4 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i class="fa fa-file-o text-primary"></i>
+                        支持的文件格式
+                    </h4>
+                    <ul class="space-y-2">
+                        <li class="flex items-center gap-2 text-gray-700">
+                            <i class="fa fa-file-word-o text-blue-500"></i>
+                            <span>Word (.doc, .docx)</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-gray-700">
+                            <i class="fa fa-file-excel-o text-green-500"></i>
+                            <span>Excel (.xls, .xlsx)</span>
+                        </li>
+                        <li class="flex items-center gap-2 text-gray-700">
+                            <i class="fa fa-file-powerpoint-o text-orange-500"></i>
+                            <span>PowerPoint (.ppt, .pptx)</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- API配置模态框 -->
+    <div id="api-config-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-neutral">API配置</h3>
+                    <button id="close-api-modal" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <form id="api-config-form">
+                    <div class="mb-4">
+                        <label for="api_key" class="block text-sm font-medium text-gray-700 mb-1">OpenAI API密钥</label>
+                        <input type="password" id="api_key" name="api_key" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" placeholder="sk-...">
+                    </div>
+                    <div class="mb-4">
+                        <label for="api_base" class="block text-sm font-medium text-gray-700 mb-1">API基础URL</label>
+                        <input type="text" id="api_base" name="api_base" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" value="http://modelurl/v1" placeholder="http://modelurl/v1">
+                    </div>
+                    <div class="mb-6">
+                        <label for="model" class="block text-sm font-medium text-gray-700 mb-1">模型名称</label>
+                        <input type="text" id="model" name="model" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus" value="modelname" placeholder="modelname">
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" id="cancel-api-config" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200">
+                            取消
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200">
+                            保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="bg-white py-6 border-t border-gray-200">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-600 text-sm">文件翻译助手 &copy; 2025 - 保留所有权利</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // DOM元素
+        const fileDropArea = document.getElementById('file-drop-area');
+        const fileInput = document.getElementById('file-input');
+        const selectedFile = document.getElementById('selected-file');
+        const fileName = document.getElementById('file-name');
+        const removeFile = document.getElementById('remove-file');
+        const translationForm = document.getElementById('translation-form');
+        const translationResult = document.getElementById('translation-result');
+        const statusProcessing = document.getElementById('status-processing');
+        const statusSuccess = document.getElementById('status-success');
+        const statusError = document.getElementById('status-error');
+        const errorMessage = document.getElementById('error-message');
+        const downloadSection = document.getElementById('download-section');
+        const downloadLink = document.getElementById('download-link');
+        const sourceLangSelect = document.getElementById('source_lang');
+        const targetLangSelect = document.getElementById('target_lang');
+        // 从localStorage加载保存的提示词设置
+        const savedPromptStep1 = localStorage.getItem('prompt_step1');
+        const savedPromptStep2 = localStorage.getItem('prompt_step2');
+        const apiConfigBtn = document.getElementById('api-config-btn');
+        const apiConfigModal = document.getElementById('api-config-modal');
+        const closeApiModal = document.getElementById('close-api-modal');
+        const cancelApiConfig = document.getElementById('cancel-api-config');
+        const apiConfigForm = document.getElementById('api-config-form');
+
+        // 文件拖放处理
+        fileDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileDropArea.classList.add('file-drop-active');
+        });
+
+        fileDropArea.addEventListener('dragleave', () => {
+            fileDropArea.classList.remove('file-drop-active');
+        });
+
+        fileDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileDropArea.classList.remove('file-drop-active');
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                showSelectedFile(e.dataTransfer.files[0].name);
+            }
+        });
+
+        // 文件选择处理
+        fileDropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                showSelectedFile(fileInput.files[0].name);
+            }
+        });
+
+        // 显示已选择的文件
+        function showSelectedFile(name) {
+            fileName.textContent = name;
+            selectedFile.classList.remove('hidden');
+            selectedFile.classList.add('flex');
+        }
+
+        // 移除已选择的文件
+        removeFile.addEventListener('click', () => {
+            fileInput.value = '';
+            selectedFile.classList.add('hidden');
+            selectedFile.classList.remove('flex');
+        });
+
+
+
+        // 打开API配置模态框
+        apiConfigBtn.addEventListener('click', () => {
+            apiConfigModal.classList.remove('hidden');
+            // 从localStorage加载保存的配置
+            const savedConfig = localStorage.getItem('apiConfig');
+            if (savedConfig) {
+                const config = JSON.parse(savedConfig);
+                document.getElementById('api_key').value = config.api_key || '';
+                document.getElementById('api_base').value = config.api_base || 'http://moidelurl/v1';
+                document.getElementById('model').value = config.model || 'modelname';
+            }
+        });
+
+        // 关闭API配置模态框
+        closeApiModal.addEventListener('click', () => {
+            apiConfigModal.classList.add('hidden');
+        });
+
+        cancelApiConfig.addEventListener('click', () => {
+            apiConfigModal.classList.add('hidden');
+        });
+
+        // 点击模态框外部关闭
+        apiConfigModal.addEventListener('click', (e) => {
+            if (e.target === apiConfigModal) {
+                apiConfigModal.classList.add('hidden');
+            }
+        });
+
+        // 保存API配置
+        apiConfigForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const apiKey = document.getElementById('api_key').value;
+            const apiBase = document.getElementById('api_base').value;
+            const model = document.getElementById('model').value;
+            
+            const config = {
+                api_key: apiKey,
+                api_base: apiBase,
+                model: model
+            };
+            
+            // 保存到localStorage
+            localStorage.setItem('apiConfig', JSON.stringify(config));
+            
+            // 显示成功消息
+            alert('API配置已保存！');
+            apiConfigModal.classList.add('hidden');
+        });
+
+        // 表单提交处理
+        translationForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // 验证表单
+            if (!fileInput.files.length) {
+                alert('请先选择一个文件');
+                return;
+            }
+            
+            // 显示翻译结果区域
+            translationResult.classList.remove('hidden');
+            statusProcessing.classList.remove('hidden');
+            statusSuccess.classList.add('hidden');
+            statusError.classList.add('hidden');
+            downloadSection.classList.add('hidden');
+            
+            // 滚动到结果区域
+            translationResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            try {
+                // 从localStorage获取API配置
+                const savedConfig = localStorage.getItem('apiConfig');
+                let config = {};
+                if (savedConfig) {
+                    config = JSON.parse(savedConfig);
+                }
+                
+                // 构建FormData
+                const formData = new FormData(translationForm);
+                
+                // 添加API配置
+                if (config.api_key) formData.append('api_key', config.api_key);
+                if (config.api_base) formData.append('api_base', config.api_base);
+                if (config.model) formData.append('model', config.model);
+                
+                // 添加两步翻译的提示词（如果有）
+                if (savedPromptStep1) formData.append('prompt_step1', savedPromptStep1);
+                if (savedPromptStep2) formData.append('prompt_step2', savedPromptStep2);
+                
+                // 发送请求
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 显示成功状态
+                    statusProcessing.classList.add('hidden');
+                    statusSuccess.classList.remove('hidden');
+                    
+                    // 设置下载链接
+                    downloadLink.href = `/download/${encodeURIComponent(data.filename)}`;
+                    downloadSection.classList.remove('hidden');
+                } else {
+                    // 显示错误消息
+                    statusProcessing.classList.add('hidden');
+                    statusError.classList.remove('hidden');
+                    errorMessage.textContent = data.error || '翻译失败，请重试';
+                }
+            } catch (error) {
+                // 显示错误消息
+                statusProcessing.classList.add('hidden');
+                statusError.classList.remove('hidden');
+                errorMessage.textContent = '网络错误，请检查您的连接并重试';
+                console.error('Translation error:', error);
+            }
+        });
+
+        // 页面加载时检查localStorage中的API配置和显示用户信息
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedConfig = localStorage.getItem('apiConfig');
+            if (savedConfig) {
+                // 配置已存在，可以在这里显示提示
+            }
+            
+            // 尝试从localStorage获取用户信息（实际项目中可能需要从服务器获取）
+            // 注意：在实际部署中，出于安全考虑，不应该在localStorage中存储敏感的用户信息
+            const currentUser = localStorage.getItem('currentUser') || '未知用户';
+            const userElement = document.getElementById('currentUser');
+            if (userElement) {
+                userElement.textContent = currentUser;
+            }
+        });
+    </script>
+</body>
+</html>
