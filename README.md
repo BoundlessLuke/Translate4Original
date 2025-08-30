@@ -1,5 +1,5 @@
 # Translate4Original
-基于Python和OpenAI API的完整保留排版的Word/Excel/PPT文档全文四语翻译，支持标准OpenAI API调用，vLLM\LM Studio等均可无损接入。
+基于Python和OpenAI API的完整保留排版的Word/Excel/PPT文档多语言翻译，支持标准OpenAI API调用接入。
 
 ## 功能特性
 - **多语言支持**：支持中文、英文、日文、泰文四种语言之间的互译
